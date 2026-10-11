@@ -87,20 +87,6 @@ Team: **B9**
 |   |       '-- B9_slide.pdf
 ```
 
-## Run and Measurement Rules
-- **Part 2 Application Execution**:
-  From `Part2/code/digital-wallet`:
-  - `mvn quarkus:dev` starts the Quarkus live coding dev mode.
-  - `mvn test` runs the JUnit 5 test suite (`DigitalWalletRulesTest` and `WalletResourceTest`).
-  - *Note*: Marked `not_run: no JDK` if the grading workstation does not expose JDK 17 / Maven.
-- **Part 3 Snippet Execution**:
-  - Java: `cd Part3/java && javac PatternDemos.java && java PatternDemos`
-  - Python: `cd Part3/python && python pattern_demos.py` (Passed: 4/4 assertions)
-  - JavaScript: `cd Part3/javascript && node pattern_demos.js` (Passed: 4/4 assertions)
-  - C++: `cd Part3/cpp && g++ -std=c++17 pattern_demos.cpp -o pattern_demos && ./pattern_demos`
-- **LOC Measurement Rule**: Production lines only; strictly excludes blank lines, comment-only lines, test classes, and README documents.
-- **Cyclomatic Complexity Rule**: Decision counting: 1 base plus decision predicates (`if`, `else if`, loops, `case`, `catch`, ternary/short-circuit operators).
-- **Process Timing Rule**: One warmup execution, followed by five measured whole-process executions on the same host; median reported in milliseconds. Missing environments are left strictly blank per assignment instructions.
 
 ## Important Limitations
 This reference study demonstrates design pattern identification, evolution, and cross-language mappings. It intentionally omits live external banking networks, distributed consensus, production encryption keyrings, PCI DSS certification, database transaction isolation levels, and monetary regulatory compliance.
