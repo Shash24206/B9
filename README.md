@@ -7,13 +7,6 @@ Upload repository: `https://github.com/aswathymohan-amrita/23CSE455_DP_CaseStudy
 Course: **23CSE455 - Design Patterns**  
 Team: **B9**  
 
-| Roll Number | Student Name | Batch (CSE A / EAC / AIDS / AIE) |
-| --- | --- | --- |
-| *[Enter Roll Number 1]* | *[Enter Student Name 1]* | *[Enter Batch]* |
-| *[Enter Roll Number 2]* | *[Enter Student Name 2]* | *[Enter Batch]* |
-| *[Enter Roll Number 3]* | *[Enter Student Name 3]* | *[Enter Batch]* |
-| *[Enter Roll Number 4]* | *[Enter Student Name 4]* | *[Enter Batch]* |
-
 ## Submission Metadata
 
 | Item | Value |
