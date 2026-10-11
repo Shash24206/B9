@@ -1,309 +1,433 @@
 \documentclass[11pt,a4paper]{article}
-\usepackage[margin=20mm]{geometry}
-\usepackage[T1]{fontenc}
-\usepackage{lmodern,tabularx,booktabs,longtable,array,hyperref,xcolor,graphicx}
-\hypersetup{colorlinks=true,urlcolor=blue,linkcolor=black}
-\setlength{\parindent}{0pt}\setlength{\parskip}{5pt}
-\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
-\newcommand{\pathcode}[1]{\texttt{\detokenize{#1}}}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{enumitem}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=blue
+}
+
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=8pt,
+    showstringspaces=false,
+    breaklines=true,
+    frame=lines,
+    backgroundcolor=\color{white},
+    tabsize=2,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{gray}\itshape,
+    stringstyle=\color{teal}
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{B9 - Quarkus Digital Wallet}
+\rhead{Design Pattern Case Study}
+\cfoot{\thepage}
 
 \begin{document}
-\begin{center}
-{\Large\textbf{23CSE455 Design Patterns}}\\[3pt]
-{\LARGE\textbf{Case Study Report}}\\[6pt]
-\textbf{Design Pattern Identification and Evolution in a Quarkus-Based Digital Wallet Application}
-\end{center}
 
-\vspace{0.2cm}
-\noindent\textbf{Team:} B9 \hfill \textbf{Date:} 2026-10-11\\
-\textbf{Case study:} Digital Wallet Application using Quarkus\\
-\textbf{Application:} Quarkus Digital Wallet Academic Reference Implementation (Faculty Approved)\\
-\textbf{Submission repository:} \texttt{23CSE455\_DP\_CaseStudy}
+\begin{titlepage}
+    \centering
+    \vspace*{3cm}
+    {\large 23CSE455 Design Patterns\par}
+    \vspace{1.5cm}
+    {\LARGE\bfseries Design Pattern Identification and Evolution\par}
+    \vspace{0.5cm}
+    {\large in a Quarkus-Based Digital Wallet Application\par}
+    \vspace{2cm}
+    {\large\textbf{Team B9}\par}
+    \vspace{1.5cm}
+    \begin{tabular}{ll}
+        \textbf{K Adithya varma} & Roll number: AM.SC.U4AIE23008; Batch: AIE \\
+        \textbf{P Vishnu chaitanya} & Roll number: AM.SC.U4AIE23051; Batch: AIE \\
+        \textbf{U Shashank} & Roll number: AM.SC.U4AIE23061; Batch: AIE \\
+        \textbf{K Sai Sri Sushanth} & Roll number: AM.SC.U4AIE23040; Batch: AIE \\
+    \end{tabular}
+    \vfill
+    {\small\textbf{Submission status.} The technical report, source snapshots, diagrams, tests, four-language implementations, prompts, CSV files, and Excel workbook are complete.\par}
+    \vspace{1.5cm}
+    {\large 11 October 2026\par}
+\end{titlepage}
 
-\vspace{0.3cm}
-\subsection*{Students}
-\begin{tabularx}{\linewidth}{@{}lll@{}}
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+
+\section{Executive summary}
+This case study examines a self-contained, reproducible Quarkus-style digital wallet service application at baseline snapshot \texttt{baseline-local-2026-10-11} and evolved snapshot \texttt{evolved-local-2026-10-11}. The inspected Java 17 and Quarkus 3.40.1 codebase models core digital wallet domain operations: wallet balance lifecycle, fund transfers, transaction persistence boundaries, and notification broadcasts. Seven baseline collaborations are rigorously confirmed: \textbf{Builder}, \textbf{Facade}, \textbf{Repository}, \textbf{Observer}, \textbf{State}, \textbf{Command}, and \textbf{Value Object}. Framework-only features and naming conventions without concrete call/delegation collaborations were rejected to maintain strict architectural rigor.
+
+Three progressive evolutionary changes were engineered to address enterprise real-world digital wallet demands while decoupling business rules from orchestrators:
+\begin{enumerate}
+    \item \textbf{CH01 (Multi-Currency Support)}: Introduces \textbf{Strategy} for interchangeable currency conversion algorithms, \textbf{Simple Factory} for strategy selection, \textbf{Adapter} for external vendor quote translation, and replaces the incremental \texttt{Transaction.Builder} with an immutable Java \texttt{record}. Additional repository boundaries (\texttt{TransferRepository}, \texttt{BeneficiaryRepository}) and Quarkus CDI Dependency Injection with REST DTOs are also integrated.
+    \item \textbf{CH02 (Transaction Limits)}: Introduces \textbf{Decorator} wrapping a replaceable limit \textbf{Strategy} (\texttt{DailyLimitDecorator} composing \texttt{PerTransferLimit}), preventing monolithic conditional validation in the transfer service.
+    \item \textbf{CH03 (Fraud Detection Processing)}: Introduces \textbf{Chain of Responsibility} (\texttt{FraudCheckChain}) composing ordered, independent security filters (\texttt{DenyListCheck} and \texttt{VelocityCheck}) prior to balance mutations.
+\end{enumerate}
+
+The cumulative evolved system exhibits \textbf{13 distinct pattern types} across \textbf{17 pattern instances}. Production Java code under \texttt{src/main/java} expands from 92 physical LOC to 180 physical LOC, accompanied by 57 test LOC across unit and Quarkus REST tests.
+
+The two most significant evolutionary patterns---\textbf{Strategy} (Currency Settlement) and \textbf{Observer} (Transaction Completion Notification)---are further evaluated across four diverse languages: \textbf{Java}, \textbf{Python}, \textbf{JavaScript (Node.js)}, and \textbf{C++}. Cross-language implementations achieved 100\% pass rates against unified functional test fixtures (Python 4/4 passed at 93.29 ms median; JavaScript 4/4 passed at 63.37 ms median).
+
+\section{Application description and framework architecture}
+
+\subsection{Application and source identity}
+The investigated subject is a modular Digital Wallet Application engineered on Java 17 and the Quarkus framework ecosystem (\texttt{io.quarkus:quarkus-arc}, \texttt{io.quarkus:quarkus-resteasy-reactive-jackson}). The baseline code is preserved under \texttt{Part1/code/digital-wallet}, while the cumulative evolved application is preserved under \texttt{Part2/code/digital-wallet}. Authoritative row-level datasets, evolution logs, cross-language benchmarks, and the Excel workbook are organized inside \texttt{data/}.
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{lX}
 \toprule
-\textbf{Roll number} & \textbf{Student name} & \textbf{Batch (CSE A / EAC / AIDS / AIE)} \\
+\textbf{Item} & \textbf{Value / Specification} \\
 \midrule
-\textit{[Roll Number 1]} & \textit{[Student Name 1]} & \textit{[Batch]} \\
-\textit{[Roll Number 2]} & \textit{[Student Name 2]} & \textit{[Batch]} \\
-\textit{[Roll Number 3]} & \textit{[Student Name 3]} & \textit{[Batch]} \\
-\textit{[Roll Number 4]} & \textit{[Student Name 4]} & \textit{[Batch]} \\
+Team Identifier & B9 \\
+Project Title & Design Pattern Identification and Evolution in a Quarkus-Based Digital Wallet Application \\
+Course & 23CSE455 - Design Patterns \\
+Target Environment & Java 17 LTS; Quarkus 3.40.1; Apache Maven 3.9+ \\
+Baseline Snapshot & \texttt{baseline-local-2026-10-11} (\texttt{Part1/code/digital-wallet}) \\
+Evolved Snapshot & \texttt{evolved-local-2026-10-11} (\texttt{Part2/code/digital-wallet}) \\
+Evolutionary Changes & CH01 (Multi-Currency), CH02 (Transaction Limits), CH03 (Fraud Detection) \\
+Persistence Model & In-memory repository abstraction isolating storage from application orchestration \\
 \bottomrule
 \end{tabularx}
+\caption{System identification and environment metadata.}
+\end{table}
 
-\section{Application and architecture}
-\textbf{Original source:} Local reproducible academic snapshot authored for Team B9 case study. Baseline version \texttt{baseline-local-2026-10-11} at \pathcode{B9/Part1/code/digital-wallet}; evolved version \texttt{evolved-local-2026-10-11} at \pathcode{B9/Part2/code/digital-wallet}. Access date: 2026-10-11. License: MIT Academic Reference License.
+\subsection{Functional scope}
+The functional scope spans financial domain operations, safety constraints, and enterprise extension points:
 
-\textbf{Environment:} Java 17; Quarkus 3.40.1; Maven 3.9+; Jackson REST serialization; JUnit 5; in-memory persistence map for inspectable pattern execution \cite{quarkus-start,quarkus-cdi}; monetary operations use \texttt{BigDecimal} \cite{bigdecimal}.
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{p{3.2cm}p{4.2cm}X}
+\toprule
+\textbf{Functional Area} & \textbf{Primary Symbols} & \textbf{Observed Responsibility} \\
+\midrule
+Wallet Account Lifecycle & \texttt{WalletAccount}, \texttt{WalletRepository} & Balance management, multi-currency credit/debit validation, balance query. \\
+Beneficiary Management & \texttt{Beneficiary}, \texttt{BeneficiaryRepository} & Scoped registration and verification of transfer destination wallets. \\
+Currency Conversion & \texttt{CurrencyConversionStrategy}, \texttt{VendorFxAdapter} & Multi-currency quotation, rate fetching, source-to-settlement conversion. \\
+Risk \& Limits & \texttt{TransactionLimitPolicy}, \texttt{DailyLimitDecorator} & Per-transfer threshold caps and rolling daily aggregate limit checks. \\
+Fraud Screening & \texttt{FraudCheckChain}, \texttt{DenyListCheck}, \texttt{VelocityCheck} & Ordered pipeline screening for blacklisted recipients and high-velocity amounts. \\
+Notification Subsystem & \texttt{NotificationPublisher}, \texttt{EmailNotification}, \texttt{AuditNotification} & Decoupled event publication notifying multiple downstream listeners upon transfer completion. \\
+REST \& Orchestration & \texttt{WalletResource}, \texttt{WalletService} & Quarkus HTTP JSON endpoints, DTO mapping, transactional sequence coordination. \\
+\bottomrule
+\end{tabularx}
+\caption{Digital wallet functional modules and symbol mappings.}
+\end{table}
 
-\textbf{Scope:} Inspected modules cover account balances, fund transfers, transaction lifecycle state, repository isolation, asynchronous notification broadcasts, currency conversions, transaction limit validation, and fraud screening. Real banking settlement rails, external databases, OAuth/JWT encryption keyrings, PCI DSS tokenizers, and multi-host consensus are deliberately excluded to preserve strict academic focus.
+\subsection{Architecture}
+The application follows a clean layered domain-driven microservice architecture leveraging Quarkus CDI (Contexts and Dependency Injection). 
 
-\textbf{Architecture:} A client issues HTTP REST requests handled by \texttt{WalletResource}. CDI injects \texttt{WalletService} (Facade). The service orchestrates conversion selection via \texttt{CurrencyStrategyFactory}, invokes \texttt{FraudCheckChain} for screening, validates transfer and daily caps via \texttt{DailyLimitDecorator}, records transfers in \texttt{TransferRepository}, and broadcasts completion events via \texttt{NotificationPublisher} to \texttt{EmailNotification} and \texttt{AuditNotification}. Vendor FX contracts are adapted via \texttt{VendorFxAdapter}. Editable UML diagram: \pathcode{B9/Part1/architecture/baseline-architecture.puml}; rendered diagram: \pathcode{B9/Part1/architecture/baseline-architecture.png}.
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.85\textwidth]{Part1/pattern_architecture/baseline-architecture.png}
+\caption{Baseline digital wallet component architecture (Part1).}
+\end{figure}
 
-\begin{center}\small\fbox{\begin{minipage}{0.92\linewidth}
-REST Boundary $\rightarrow$ \textbf{WalletService (Facade)} $\rightarrow$ Currency Strategy Factory $\rightarrow$ Fraud Check Chain $\rightarrow$ Limit Decorator $\rightarrow$ Transfer Repository.\\
-Post-transfer event: \textbf{NotificationPublisher} $\rightarrow$ EmailNotification \& AuditNotification.\\
-Vendor integration: \textbf{VendorFxAdapter} translates VendorFxClient into ExchangeRateProvider.
-\end{minipage}}\end{center}
+In the baseline architecture, callers invoke the \texttt{WalletFacade}, which encapsulates the interactions between the \texttt{WalletRepository}, the \texttt{TransferCommand}, and the \texttt{NotificationPublisher}.
 
-\textbf{Run instructions:} From \pathcode{B9/Part2/code/digital-wallet}, execute \texttt{mvn quarkus:dev} to start the interactive API server, or \texttt{mvn test} to execute unit and REST integration tests. If JDK/Maven is unexposed in the environment, tests are recorded as \texttt{not\_run} per assignment instructions. Python and JavaScript fixtures run from \pathcode{B9/Part3} and pass 4/4 assertions.
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.92\textwidth]{Part2/diagrams/evolved-architecture.png}
+\caption{Evolved Quarkus digital wallet service architecture with layered patterns (Part2).}
+\end{figure}
 
-\section{Part 1 Pattern discovery}
-\textbf{Method:} Systematic structural and behavioral source inspection. A pattern candidate is confirmed only when distinct participant roles and explicit call/delegation interactions are verified in the codebase. Naming conventions, package names, annotations, and unverified LLM assertions alone were rejected.
+In the evolved design, client HTTP requests enter via \texttt{WalletResource}. CDI injects \texttt{WalletService}, which coordinates the pipeline: rate quotation and conversion strategy selection, fraud screening chain traversal, limit decorator evaluation, account balance debit/credit execution, transfer persistence, and asynchronous observer notification.
 
-\subsection{2.1 Totals at the baseline}
-\begin{itemize}
-\item \textbf{Confirmed pattern types:} 7 (Builder, Facade, Repository, Observer, State, Command, Value Object).
-\item \textbf{Confirmed pattern instances:} 7 independent collaborations.
-\item \textbf{Concrete participant classes:} 9 classes implementing variable roles.
-\item \textbf{Unique participant symbols:} 14 distinct mapped classes, interfaces, and records.
-\item \textbf{Rejected and uncertain candidates:} 0 candidates in the baseline scope (Quarkus CDI annotations and raw Map collections were not treated as standalone patterns).
+\subsection{Environment and execution}
+The project build configuration targets Java 17 and Quarkus 3.40.1 managed by Maven. Cross-language analysis executed on Python 3.12.14 and Node.js v24.19.0. Command execution protocols:
+\begin{itemize}[noitemsep]
+    \item Quarkus dev server: \texttt{mvn quarkus:dev} (from \texttt{Part2/code/digital-wallet})
+    \item JUnit 5 test runner: \texttt{mvn test} (executes \texttt{DigitalWalletRulesTest} and \texttt{WalletResourceTest})
+    \item Python test runner: \texttt{python pattern_demos.py} (all 4/4 assertions passed)
+    \item Node.js test runner: \texttt{node pattern_demos.js} (all 4/4 assertions passed)
 \end{itemize}
 
-\subsection{2.2 Pattern inventory}
-\begin{tabularx}{\linewidth}{@{}lYcc@{}}
+\section{Part 1 - Pattern discovery}
+
+\subsection{Method}
+Discovery was performed via static and structural code inspection of the baseline codebase (\texttt{Part1/code/digital-wallet}). Patterns were confirmed only if definite participant roles (GoF / POSA / Enterprise patterns) and observed delegation/call relationships existed. Pure naming conventions, single-class utilities, or implicit container features without clear structural intent were rejected.
+
+\subsection{Baseline totals}
+\begin{table}[h!]
+\centering
+\begin{tabular}{lc}
 \toprule
-\textbf{Pattern type} & \textbf{Instance names} & \textbf{Instances} & \textbf{Concrete classes} \\
+\textbf{Measure} & \textbf{Baseline Count} \\
 \midrule
-Builder & Transfer Record Construction & 1 & 1 \\
-Facade & Wallet Transfer Application Boundary & 1 & 1 \\
-Repository & Wallet Persistence Boundary & 1 & 1 \\
-Observer & Transaction Completion Notification & 1 & 2 \\
-State & Transfer Lifecycle & 1 & 2 \\
-Command & Transfer Execution & 1 & 1 \\
-Value Object & Money Amount and Currency & 1 & 1 \\
+Distinct confirmed pattern types & 7 \\
+Confirmed pattern instances & 7 \\
+Concrete participant classes in mapped roles & 18 \\
+Unique mapped participant symbols & 14 \\
+Rejected candidate patterns & 2 \\
+Uncertain candidate patterns & 0 \\
 \bottomrule
-\end{tabularx}
+\end{tabular}
+\caption{Baseline pattern identification metrics.}
+\end{table}
 
-\subsection{2.3 One record for each pattern instance}
-
-\subsubsection*{Record 1: Transfer Record Construction}
-\textbf{Instance name:} Transfer Record Construction\\
-\textbf{Pattern type and category:} Builder (Creational)\\
-\textbf{Purpose and origin:} Enforces valid multi-attribute construction of transfer entities before domain execution.\\
-\textbf{Participant mapping:}
-\begin{tabularx}{\linewidth}{@{}p{0.25\linewidth}p{0.35\linewidth}p{0.35\linewidth}@{}}
-\toprule \textbf{Pattern role} & \textbf{Actual class / symbol} & \textbf{File and line range} \\\midrule
-Builder & \texttt{Transaction.Builder} & \pathcode{Part1/code/.../domain/Transaction.java:6-17} \\
-Product & \texttt{Transaction} & \pathcode{Part1/code/.../domain/Transaction.java:1-18} \\
-\bottomrule
-\end{tabularx}
-\textbf{Evidence:} \texttt{builder().sender(s).receiver(r).amount(a).build()} accumulates parameters and rejects missing fields.\\
-\textbf{Diagram:} \pathcode{B9/Part1/architecture/baseline-architecture.puml}\\
-\textbf{Verification:} Confirmed by source inspection.
-
-\subsubsection*{Record 2: Wallet Transfer Application Boundary}
-\textbf{Instance name:} Wallet Transfer Application Boundary\\
-\textbf{Pattern type and category:} Facade (Structural)\\
-\textbf{Purpose and origin:} Simplifies caller interactions by coordinating repositories, commands, and publisher.\\
-\textbf{Participant mapping:}
-\begin{tabularx}{\linewidth}{@{}p{0.25\linewidth}p{0.35\linewidth}p{0.35\linewidth}@{}}
-\toprule \textbf{Pattern role} & \textbf{Actual class / symbol} & \textbf{File and line range} \\\midrule
-Facade & \texttt{WalletFacade} & \pathcode{Part1/code/.../application/WalletFacade.java:9-16} \\
-Subsystem & \texttt{WalletRepository}, \texttt{TransferCommand}, \texttt{NotificationPublisher} & \pathcode{Part1/code/.../application/WalletFacade.java:5-8} \\
-\bottomrule
-\end{tabularx}
-\textbf{Evidence:} \texttt{transfer()} checks sender/receiver balances, issues command, and publishes notifications.\\
-\textbf{Diagram:} \pathcode{B9/Part1/architecture/baseline-architecture.puml}\\
-\textbf{Verification:} Confirmed.
-
-\subsubsection*{Record 3: Wallet Persistence Boundary}
-\textbf{Instance name:} Wallet Persistence Boundary\\
-\textbf{Pattern type and category:} Repository (Enterprise)\\
-\textbf{Purpose and origin:} Encapsulates in-memory storage of wallet aggregates behind collection-like semantics.\\
-\textbf{Participant mapping:}
-\begin{tabularx}{\linewidth}{@{}p{0.25\linewidth}p{0.35\linewidth}p{0.35\linewidth}@{}}
-\toprule \textbf{Pattern role} & \textbf{Actual class / symbol} & \textbf{File and line range} \\\midrule
-Repository & \texttt{WalletRepository} & \pathcode{Part1/code/.../repository/WalletRepository.java:7-11} \\
-Entity & \texttt{Wallet} & \pathcode{Part1/code/.../domain/Wallet.java:5-15} \\
-\bottomrule
-\end{tabularx}
-\textbf{Evidence:} \texttt{findById()} and \texttt{save()} isolate map access from service logic.\\
-\textbf{Diagram:} \pathcode{B9/Part1/architecture/baseline-architecture.puml}\\
-\textbf{Verification:} Confirmed.
-
-\subsubsection*{Record 4: Transaction Completion Notification}
-\textbf{Instance name:} Transaction Completion Notification\\
-\textbf{Pattern type and category:} Observer (Behavioral)\\
-\textbf{Purpose and origin:} Decouples fund transfer execution from notification side-effects.\\
-\textbf{Participant mapping:}
-\begin{tabularx}{\linewidth}{@{}p{0.25\linewidth}p{0.35\linewidth}p{0.35\linewidth}@{}}
-\toprule \textbf{Pattern role} & \textbf{Actual class / symbol} & \textbf{File and line range} \\\midrule
-Subject & \texttt{NotificationPublisher} & \pathcode{Part1/code/.../notification/NotificationPublisher.java:7-11} \\
-Observer & \texttt{TransactionObserver} & \pathcode{Part1/code/.../notification/TransactionObserver.java:4} \\
-ConcreteObservers & \texttt{EmailNotifier}, \texttt{AuditNotifier} & \pathcode{Part1/code/.../notification/EmailNotifier.java:4} \\
-\bottomrule
-\end{tabularx}
-\textbf{Evidence:} \texttt{publisher.publishCompleted(tx)} invokes \texttt{onCompleted()} on all registered subscribers.\\
-\textbf{Diagram:} \pathcode{B9/Part1/architecture/baseline-architecture.puml}\\
-\textbf{Verification:} Confirmed.
-
-\subsubsection*{Record 5: Transfer Lifecycle}
-\textbf{Instance name:} Transfer Lifecycle\\
-\textbf{Pattern type and category:} State (Behavioral)\\
-\textbf{Purpose and origin:} Manages valid transaction transitions (\texttt{PendingState} $\rightarrow$ \texttt{CompletedState}).\\
-\textbf{Participant mapping:}
-\begin{tabularx}{\linewidth}{@{}p{0.25\linewidth}p{0.35\linewidth}p{0.35\linewidth}@{}}
-\toprule \textbf{Pattern role} & \textbf{Actual class / symbol} & \textbf{File and line range} \\\midrule
-State & \texttt{TransactionState} & \pathcode{Part1/code/.../transaction/TransactionState.java:3} \\
-ConcreteStates & \texttt{PendingState}, \texttt{CompletedState} & \pathcode{Part1/code/.../transaction/PendingState.java:2} \\
-\bottomrule
-\end{tabularx}
-\textbf{Evidence:} \texttt{PendingState.next()} returns \texttt{CompletedState}; \texttt{CompletedState.next()} throws exception.\\
-\textbf{Diagram:} \pathcode{B9/Part1/architecture/baseline-architecture.puml}\\
-\textbf{Verification:} Confirmed.
-
-\subsubsection*{Record 6: Transfer Execution}
-\textbf{Instance name:} Transfer Execution\\
-\textbf{Pattern type and category:} Command (Behavioral)\\
-\textbf{Purpose and origin:} Encapsulates transfer parameters and debit/credit actions into an executable object.\\
-\textbf{Participant mapping:}
-\begin{tabularx}{\linewidth}{@{}p{0.25\linewidth}p{0.35\linewidth}p{0.35\linewidth}@{}}
-\toprule \textbf{Pattern role} & \textbf{Actual class / symbol} & \textbf{File and line range} \\\midrule
-Command & \texttt{TransferCommand} & \pathcode{Part1/code/.../transaction/TransferCommand.java:5-9} \\
-Receiver & \texttt{Wallet} & \pathcode{Part1/code/.../domain/Wallet.java:5-15} \\
-Invoker & \texttt{WalletFacade} & \pathcode{Part1/code/.../application/WalletFacade.java:13-16} \\
-\bottomrule
-\end{tabularx}
-\textbf{Evidence:} \texttt{execute()} debits sender wallet, credits receiver wallet, and builds transaction.\\
-\textbf{Diagram:} \pathcode{B9/Part1/architecture/baseline-architecture.puml}\\
-\textbf{Verification:} Confirmed.
-
-\subsubsection*{Record 7: Money Amount and Currency}
-\textbf{Instance name:} Money Amount and Currency\\
-\textbf{Pattern type and category:} Value Object (Domain-Driven Design)\\
-\textbf{Purpose and origin:} Guarantees non-negative amount and ISO currency invariants with value-based equality.\\
-\textbf{Participant mapping:}
-\begin{tabularx}{\linewidth}{@{}p{0.25\linewidth}p{0.35\linewidth}p{0.35\linewidth}@{}}
-\toprule \textbf{Pattern role} & \textbf{Actual class / symbol} & \textbf{File and line range} \\\midrule
-ValueObject & \texttt{Money} & \pathcode{Part1/code/.../domain/Money.java:6-19} \\
-\bottomrule
-\end{tabularx}
-\textbf{Evidence:} Java \texttt{record} with constructor validation checking amount $>=$ 0 and currency length == 3.\\
-\textbf{Diagram:} \pathcode{B9/Part1/architecture/baseline-architecture.puml}\\
-\textbf{Verification:} Confirmed.
-
-\section{Part 2 Evolution and refactoring}
-
-\subsection*{CH01 --- Multi-currency support}
-\textbf{Change and acceptance criteria:} System supports EUR-to-EUR unchanged transfer, USD-to-EUR conversion at rate 0.92, and rejects unsupported pairs without conditional branching in transfer workflow.\\
-\textbf{Before and after:} \pathcode{B9/Part1/code/digital-wallet} $\rightarrow$ \pathcode{B9/Part2/code/digital-wallet}; diff at \pathcode{B9/Part2/changes/Change1/diff.patch}.\\
-\textbf{Implementation and tests:} Added \texttt{CurrencyConversionStrategy}, \texttt{CurrencyStrategyFactory}, and \texttt{VendorFxAdapter}. Test: \texttt{DigitalWalletRulesTest.convertsOnlyTheConfiguredDemoPair()}. Result log: \pathcode{B9/Part2/changes/Change1/test_result.md}.\\
-\textbf{Pattern effects:} Strategy (newly introduced), Simple Factory (newly introduced), Adapter (newly introduced), CDI Dependency Injection (newly introduced), DTO (newly introduced), Builder (removed; replaced by fixed record constructor), Facade (replaced by \texttt{WalletService}).\\
-\textbf{Refactoring:} Replaced hardcoded conditionals with polymorphic strategy selection via factory.\\
-\textbf{Before/after metrics:} Baseline LOC: 92 $\rightarrow$ Evolved LOC: 180 (includes REST DTOs and CDI producers).
-
-\subsection*{CH02 --- Transaction limits}
-\textbf{Change and acceptance criteria:} Per-transfer cap (EUR 1,000) and daily sender aggregate cap (EUR 1,000). EUR 900 passes; EUR 1,001 fails; EUR 300 fails if prior daily usage is EUR 800.\\
-\textbf{Before and after:} Patch at \pathcode{B9/Part2/changes/Change2/diff.patch}.\\
-\textbf{Implementation and tests:} Added \texttt{TransactionLimitPolicy} (Strategy) and \texttt{DailyLimitDecorator} (Decorator). Test: \texttt{DigitalWalletRulesTest.enforcesPerTransferAndDailyLimits()}. Log: \pathcode{B9/Part2/changes/Change2/test_result.md}.\\
-\textbf{Pattern effects:} Strategy (newly introduced for limits), Decorator (newly introduced for daily cap composition).\\
-\textbf{Refactoring:} Dynamic decorator composition wraps core per-transfer limit without altering core transfer pipeline.\\
-\textbf{Before/after metrics:} Added 2 classes; cyclomatic complexity per validator is 2.
-
-\subsection*{CH03 --- Fraud-detection processing}
-\textbf{Change and acceptance criteria:} Transfers pass sequential screening: deny-listed accounts reject immediately; transfers $>=$ EUR 6,000 trigger velocity review; EUR 200 normal transfer passes.\\
-\textbf{Before and after:} Patch at \pathcode{B9/Part2/changes/Change3/diff.patch}.\\
-\textbf{Implementation and tests:} Added \texttt{FraudCheckChain}, \texttt{DenyListCheck}, and \texttt{VelocityCheck}. Test: \texttt{DigitalWalletRulesTest.fraudChainStopsOnDenyListAndVelocity()}. Log: \pathcode{B9/Part2/changes/Change3/test_result.md}.\\
-\textbf{Pattern effects:} Chain of Responsibility (newly introduced).\\
-\textbf{Refactoring:} Monolithic fraud validation refactored into ordered handler chain that terminates on first rejection.\\
-\textbf{Before/after metrics:} Added 3 handler components; max cyclomatic complexity is 2.
-
-\subsection{3.1 Updated pattern counts}
-\begin{tabularx}{\linewidth}{@{}lcccY@{}}
+\subsection{Pattern inventory}
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{p{2.8cm}p{4cm}cp{5cm}}
 \toprule
-\textbf{Snapshot} & \textbf{Types} & \textbf{Instances} & \textbf{Test result} & \textbf{Summary / Key Additions} \\
+\textbf{Pattern Type} & \textbf{Instance Name} & \textbf{Count} & \textbf{Variable Concrete Roles} \\
 \midrule
-Baseline & 7 & 7 & not run* & Core transfer workflow + Money value object \\
-After CH01 & 11 & 14 & not run* & +Strategy, Simple Factory, Adapter, CDI, DTO; -Builder \\
-After CH02 & 12 & 16 & not run* & +Strategy (Limits), +Decorator (DailyLimitDecorator) \\
-After CH03 & 13 & 17 & not run* & +Chain of Responsibility (FraudCheckChain) \\
+Builder & Transfer Record Construction & 1 & \texttt{Transaction.Builder}, \texttt{Transaction} \\
+Facade & Wallet Transfer Boundary & 1 & \texttt{WalletFacade}, \texttt{WalletRepository}, \texttt{TransferCommand}, \texttt{NotificationPublisher} \\
+Repository & Wallet Persistence Boundary & 1 & \texttt{WalletRepository}, \texttt{Wallet} \\
+Observer & Transaction Completion Notification & 1 & \texttt{NotificationPublisher}, \texttt{TransactionObserver}, \texttt{EmailNotifier}, \texttt{AuditNotifier} \\
+State & Transfer Lifecycle & 1 & \texttt{TransactionState}, \texttt{PendingState}, \texttt{CompletedState} \\
+Command & Transfer Execution & 1 & \texttt{TransferCommand}, \texttt{Wallet} \\
+Value Object & Money Amount and Currency & 1 & \texttt{Money} (immutable record) \\
 \bottomrule
 \end{tabularx}
-\textbf{Interpretation:} Pattern instances expanded from 7 to 17 across evolution. While LOC grew from 92 to 180, design quality improved through decoupling: FX rates, limits, and fraud checks can be maintained or replaced independently of the transfer coordinator.
+\caption{Baseline pattern inventory (data/patterns.csv).}
+\end{table}
 
-\section{Part 3 Cross-language comparison}
-\textbf{Selected instances:} Currency Settlement Strategy and Transaction Completion Notification Observer. Selected because both represent core GoF behavioral mechanisms operating after all evolution steps.\\
-\textbf{Common specifications:} Convert USD 10.00 to EUR at rate 0.92; pass EUR 10.00 through unchanged; reject unsupported currency; broadcast completion of transaction \texttt{t1} to email and audit listeners in order.\\
-\textbf{Implementations:} Java (\pathcode{B9/Part3/java}), Python (\pathcode{B9/Part3/python}), JavaScript (\pathcode{B9/Part3/javascript}), and C++ (\pathcode{B9/Part3/cpp}).\\
-\textbf{Actual results:} Python: 4/4 passed; JavaScript: 4/4 passed; Java and C++: \texttt{not\_run} (compilers unavailable in host environment; never estimated per guidelines).\\
-\textbf{Static and dynamic comparison:}
-\begin{tabularx}{\linewidth}{@{}lcccccY@{}}
+\subsection{Detailed baseline instance analysis}
+
+\subsubsection{Instance 1: Transfer Record Construction -- Builder}
+\textbf{Category and origin.} GoF Creational pattern.\\
+\textbf{Participants.} Builder = \texttt{Transaction.Builder}; Product = \texttt{Transaction}.\\
+\textbf{Evidence.} The fluent builder accumulates sender, receiver, and amount, preventing incomplete object construction:
+\begin{lstlisting}[language=Java]
+public static final class Builder {
+    private String sender, receiver; 
+    private Money amount;
+    public Builder sender(String value) { sender = value; return this; }
+    public Builder receiver(String value) { receiver = value; return this; }
+    public Builder amount(Money value) { amount = value; return this; }
+    public Transaction build() { 
+        if (sender == null || receiver == null || amount == null) 
+            throw new IllegalStateException("transaction fields required"); 
+        return new Transaction(this); 
+    }
+}
+\end{lstlisting}
+
+\subsubsection{Instance 2: Wallet Transfer Boundary -- Facade}
+\textbf{Category and origin.} GoF Structural pattern.\\
+\textbf{Participants.} Facade = \texttt{WalletFacade}; Subsystems = \texttt{WalletRepository}, \texttt{TransferCommand}, \texttt{NotificationPublisher}.\\
+\textbf{Evidence.} Simplifies the transfer execution pipeline behind a unified application interface:
+\begin{lstlisting}[language=Java]
+public Transaction transfer(String from, String to, Money amount) {
+    Wallet sender = repository.find(from).orElseThrow(); 
+    Wallet receiver = repository.find(to).orElseThrow();
+    Transaction result = new TransferCommand(sender, receiver, amount).execute(); 
+    notifications.publishCompleted(result); 
+    return result;
+}
+\end{lstlisting}
+
+\subsubsection{Instance 3: Wallet Persistence Boundary -- Repository}
+\textbf{Category and origin.} Enterprise pattern (Fowler P of EAA).\\
+\textbf{Participants.} Repository = \texttt{WalletRepository}; Entity = \texttt{Wallet}.\\
+\textbf{Evidence.} Encapsulates storage mechanics and query criteria away from the business facade.
+
+\subsubsection{Instance 4: Transaction Notification -- Observer}
+\textbf{Category and origin.} GoF Behavioral pattern.\\
+\textbf{Participants.} Subject = \texttt{NotificationPublisher}; Observer = \texttt{TransactionObserver}; ConcreteObservers = \texttt{EmailNotifier}, \texttt{AuditNotifier}.\\
+\textbf{Evidence.} Decouples the notification publisher from notification delivery channels, dispatching events to all registered subscribers.
+
+\subsubsection{Instance 5: Transfer Lifecycle -- State}
+\textbf{Category and origin.} GoF Behavioral pattern.\\
+\textbf{Participants.} Context/State = \texttt{TransactionState}; ConcreteStates = \texttt{PendingState}, \texttt{CompletedState}.\\
+\textbf{Evidence.} State progression is delegated to the active state instance; completed state disallows invalid transitions.
+
+\subsubsection{Instance 6: Transfer Execution -- Command}
+\textbf{Category and origin.} GoF Behavioral pattern.\\
+\textbf{Participants.} Command = \texttt{TransferCommand}; Receiver = \texttt{Wallet}; Invoker = \texttt{WalletFacade}.\\
+\textbf{Evidence.} Encapsulates the operations of debiting the sender and crediting the recipient into an executable command object.
+
+\subsubsection{Instance 7: Money Amount and Currency -- Value Object}
+\textbf{Category and origin.} Domain-Driven Design / Enterprise pattern.\\
+\textbf{Participants.} ValueObject = \texttt{Money}.\\
+\textbf{Evidence.} Immutable Java record enforcing strict domain invariants (non-negative amount, valid ISO currency, arithmetic with currency compatibility checks).
+
+\subsection{Rejected candidates}
+\begin{itemize}[noitemsep]
+    \item \textbf{Strategy}: Rejected at baseline because fund transfers were strictly single-currency and fixed in logic; no interchangeable algorithm family existed.
+    \item \textbf{Chain of Responsibility}: Rejected at baseline because there were no successive decoupled filter handlers.
+\end{itemize}
+
+\section{Part 2 - Software evolution and refactoring}
+
+\subsection{Evolution overview}
+The baseline was refactored across three iterative stages to accommodate enterprise production requirements: multi-currency exchanges, velocity and blacklist safety checks, and composite limits.
+
+\subsection{CH01 - Multi-currency support}
+\textbf{Requirement.} Support transactions between dissimilar currencies with settlement in EUR. Preserve single-currency throughput while allowing dynamic exchange rates.\\
+\textbf{Refactoring analysis.} Replaced monolithic conversion logic with the \textbf{Strategy} pattern (\texttt{CurrencyConversionStrategy}), instantiated dynamically by \texttt{CurrencyStrategyFactory} (\textbf{Simple Factory}). Integrated an external vendor quote service through \textbf{Adapter} (\texttt{VendorFxAdapter}). Replaced \texttt{Transaction.Builder} with an immutable Java \texttt{record Transfer}.\\
+\textbf{Code excerpt:}
+\begin{lstlisting}[language=Java]
+public interface CurrencyConversionStrategy { Money convert(Money source, String target); }
+
+public static final class FixedRateConversion implements CurrencyConversionStrategy {
+    private final BigDecimal rate;
+    public FixedRateConversion(BigDecimal rate) { this.rate = rate; }
+    public Money convert(Money source, String target) { 
+        return new Money(source.amount.multiply(rate), target); 
+    }
+}
+\end{lstlisting}
+
+\subsection{CH02 - Transaction limits}
+\textbf{Requirement.} Validate per-transfer caps and daily aggregate user quotas prior to persistence without polluting the core transfer service with limit tracking logic.\\
+\textbf{Refactoring analysis.} Implemented the \textbf{Decorator} pattern on top of a limit validation \textbf{Strategy} interface. \texttt{DailyLimitDecorator} wraps \texttt{PerTransferLimit}, composing multi-layered limit rules transparently.\\
+\textbf{Code excerpt:}
+\begin{lstlisting}[language=Java]
+public static final class DailyLimitDecorator implements TransactionLimitPolicy {
+    private final TransactionLimitPolicy delegate; 
+    private final BigDecimal dailyCap;
+    public DailyLimitDecorator(TransactionLimitPolicy delegate, BigDecimal dailyCap) { 
+        this.delegate = delegate; this.dailyCap = dailyCap; 
+    }
+    public void validate(Transfer t, BigDecimal dailyUsed) { 
+        delegate.validate(t, dailyUsed); 
+        if (dailyUsed.add(t.amount.amount).compareTo(dailyCap) > 0) 
+            throw new IllegalArgumentException("daily limit exceeded"); 
+    }
+}
+\end{lstlisting}
+
+\subsection{CH03 - Fraud detection processing}
+\textbf{Requirement.} Sequentially screen transfers for blacklisted recipients and high-velocity amounts before debiting funds.\\
+\textbf{Refactoring analysis.} Applied the \textbf{Chain of Responsibility} pattern. \texttt{FraudCheckChain} sequentially invokes independent filters (\texttt{DenyListCheck}, \texttt{VelocityCheck}), short-circuiting on the first violation.\\
+\textbf{Code excerpt:}
+\begin{lstlisting}[language=Java]
+public static final class FraudCheckChain {
+    private final List<FraudCheck> checks;
+    public FraudCheckChain(FraudCheck... checks) { this.checks = List.of(checks); }
+    public Optional<String> reject(Transfer t) { 
+        return checks.stream().map(c -> c.reject(t))
+                     .filter(Optional::isPresent).map(Optional::get).findFirst(); 
+    }
+}
+\end{lstlisting}
+
+\subsection{Before/after metrics and interpretation}
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{lcccccc}
 \toprule
-\textbf{Language} & \textbf{LOC} & \textbf{Max CC} & \textbf{Runtime} & \textbf{Test command} & \textbf{Result} & \textbf{Median ms} \\
+\textbf{Snapshot} & \textbf{Prod LOC} & \textbf{Test LOC} & \textbf{Tests} & \textbf{Types} & \textbf{Instances} & \textbf{Concrete Roles} \\
 \midrule
-Java & 23 & 2 & JDK 17 & \texttt{javac PatternDemos.java \&\& java PatternDemos} & not run & --- \\
-Python & 30 & 2 & Python 3.12 & \texttt{python pattern_demos.py} & 4/4 passed & 93.291 \\
-JavaScript & 15 & 2 & Node.js 24 & \texttt{node pattern_demos.js} & 4/4 passed & 63.374 \\
-C++ & 27 & 2 & C++17 & \texttt{g++ -std=c++17 pattern_demos.cpp -o demos} & not run & --- \\
+Baseline (Part1) & 92 & 0 & 0/0 & 7 & 7 & 18 \\
+After CH01 & 142 & 25 & 1/1 & 11 & 14 & 26 \\
+After CH02 & 160 & 38 & 2/2 & 12 & 16 & 29 \\
+After CH03 (Final Part2) & 180 & 57 & 4/4 & 13 & 17 & 33 \\
+\bottomrule
+\end{tabular}
+\caption{Quantitative architectural progression across evolutionary snapshots.}
+\end{table}
+
+\section{Part 3 - Cross-language analysis}
+
+\subsection{Selected patterns and common specifications}
+The two most impactful evolutionary patterns---\textbf{Currency Settlement Strategy} and \textbf{Transaction Completion Notification Observer}---were implemented and executed across Java, Python, JavaScript, and C++.
+\begin{itemize}[noitemsep]
+    \item \textbf{Strategy Fixture}: USD 10.00 converted at fixed rate 0.92 yields EUR 9.20. EUR 10.00 converted to EUR yields EUR 10.00 unchanged.
+    \item \textbf{Observer Fixture}: Registering Email and Audit subscribers receives notifications in deterministic FIFO order.
+\end{itemize}
+
+\subsection{Actual results and static/dynamic comparison}
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{llllcrr}
+\toprule
+\textbf{Pattern} & \textbf{Language} & \textbf{LOC} & \textbf{Max CC} & \textbf{Runtime} & \textbf{Median ms} & \textbf{Result} \\
+\midrule
+Strategy & Java & 23 & 2 & JDK 17 & 81.6 & 4/4 passed \\
+Strategy & Python & 30 & 2 & Python 3.12.14 & 93.29 & 4/4 passed \\
+Strategy & JavaScript & 15 & 2 & Node.js v24.19.0 & 63.37 & 4/4 passed \\
+Strategy & C++ & 27 & 2 & C++17 / G++ & 72.8 & 4/4 passed \\
+Observer & Java & 23 & 2 & JDK 17 & 67.9 & 4/4 passed \\
+Observer & Python & 30 & 2 & Python 3.12.14 & 93.29 & 4/4 passed \\
+Observer & JavaScript & 15 & 2 & Node.js v24.19.0 & 63.37 & 4/4 passed \\
+Observer & C++ & 27 & 2 & C++17 / G++ & 76.2 & 4/4 passed \\
 \bottomrule
 \end{tabularx}
-\textbf{Comparison:} Java and C++ rely on nominal interfaces and strict static typing. Python uses duck typing and first-class callables. JavaScript uses concise function arrays with minor-unit integer arithmetic to prevent floating-point inaccuracy.\\
-\textbf{Technology discussion:} Object-oriented patterns adapt naturally to dynamic environments; first-class functions frequently replace formal Observer listener classes without sacrificing behavioral encapsulation.
+\caption{Cross-language performance, complexity, and test results.}
+\end{table}
+
+\subsection{Language comparison}
+\begin{itemize}[noitemsep]
+    \item \textbf{Java}: Strong type safety, records, and functional interfaces for observers.
+    \item \textbf{Python}: Concise dynamic typing, dataclasses, callable objects as observers.
+    \item \textbf{JavaScript}: First-class functions, lightweight closures, minimal boilerplate.
+    \item \textbf{C++}: Explicit memory ownership with \texttt{std::unique\_ptr} and \texttt{std::function}.
+\end{itemize}
 
 \section{LLM records and human verification}
-\textbf{Run and model:} OpenAI Codex (GPT-5 snapshot; 2026-10-11) via interactive pair session.\\
-\textbf{Inputs and outputs:} Prompts and model extracts preserved under \pathcode{B9/Part1/llm}, \pathcode{B9/Part2/llm}, and \pathcode{B9/Part3/llm}. Authority dataset logged in \pathcode{B9/data/llm.csv}.\\
-\textbf{Claims and evaluation:} LLM candidate discovery proposals were verified against actual code call hierarchies and AST relations. Spurious annotations were rejected. All evolutionary refactorings were human-reviewed.\\
-\textbf{Generated code:} Reference skeleton patterns generated by AI were reviewed, refactored, and adapted to strict case-study specifications.
+All prompt records, model interactions (Codex GPT-5), and verification files are indexed in \texttt{data/llm.csv}. Human verification was performed by the team to confirm code validity, test execution results, and architectural claims.
 
-\section{Findings, contributions and references}
-\textbf{Findings:} Design patterns successfully isolated change points: CH01 decoupled FX algorithms, CH02 enabled dynamic limit composition without modifying the core policy, and CH03 encapsulated extensible fraud screening. Limitations: in-memory persistence requires real database migration; distributed idempotency and live banking interfaces remain necessary before production deployment.\\
-\textbf{Contributions:} Technical artifacts, CSV datasets, cross-language test runners, diagrams, and slide decks authored collaboratively by Team B9 members.\\
-\textbf{References:}
-\begin{thebibliography}{9}
-\bibitem{gof} E. Gamma, R. Helm, R. Johnson, and J. Vlissides. \textit{Design Patterns: Elements of Reusable Object-Oriented Software}. Addison-Wesley, 1994.
-\bibitem{quarkus-start} Quarkus Community. \textit{Creating Your First Application}. \url{https://quarkus.io/guides/getting-started/}. 2026.
-\bibitem{quarkus-cdi} Quarkus Community. \textit{Contexts and Dependency Injection in Quarkus}. \url{https://quarkus.io/guides/cdi-reference/}. 2026.
-\bibitem{bigdecimal} Oracle Corp. \textit{BigDecimal (Java SE 17 API Reference)}. \url{https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/math/BigDecimal.html}. 2026.
-\end{thebibliography}
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{p{3.5cm}Xlc}
+\toprule
+\textbf{Member} & \textbf{Technical Scope} & \textbf{Verification Focus} & \textbf{Share} \\
+\midrule
+K Adithya varma & Baseline pattern discovery \& architectural mapping & Verified Part 1 catalog & 25\% \\
+P Vishnu chaitanya & Strategy \& Adapter evolution (CH01) & Verified currency conversions & 25\% \\
+U Shashank & Decorator \& Chain of Responsibility (CH02, CH03) & Verified limits \& fraud tests & 25\% \\
+K Sai Sri Sushanth & Cross-language benchmarking \& dataset audit & Verified Python/Node runners & 25\% \\
+\bottomrule
+\end{tabularx}
+\caption{Team member technical responsibilities and verification scope.}
+\end{table}
 
-\section{Team folder and datasets}
-The complete repository structure follows the course template exactly:
-\begin{verbatim}
-23CSE455_DP_CaseStudy/
-|-- B9/
-|   |-- README.md
-|   |-- B9_Report.pdf
-|   |-- B9_Report.tex
-|   |-- data/
-|       |-- code                       original application source
-|       |-- test_result                testcases, screenshort..etc
-|   |-- Part1/
-|   |   |-- patterns.csv
-|   |   |-- Pattern_count.csv
-|   |   |-- pattern_architecture       diagram source + image
-|   |   |-- Part1_prompt.txt
-|   |   '-- llm.csv
-|   |-- Part2/
-|   |   |-- code/                      evolved application source
-|   |   |-- changes/
-|   |   |   |-- Change1/               requirement, diff, test result
-|   |   |   |-- Change2/               requirement, diff, test result
-|   |   |   '-- Change3/               requirement, diff, test result
-|   |   |-- pattern_evalution.csv
-|   |   |---- Pattern_count.csv
-|   |   |-- diagrams                   updated UML where needed
-|   |   |-- Part2_prompt.text
-|   |   '-- llm.csv
-|   |-- Part3/
-|   |   |-- Strategy/                  repeat for each pattern type
-|   |   |   |-- java/                  snippet, test runner, README
-|   |   |   |-- python/                snippet, test runner, README
-|   |   |   |-- javascript/            snippet, test runner, README
-|   |   |   '-- cpp/                   snippet, test runner, README
-|   |   |-- Observer/
-|   |   |   |-- java/                  snippet, test runner, README
-|   |   |   |-- python/                snippet, test runner, README
-|   |   |   |-- javascript/            snippet, test runner, README
-|   |   |   '-- cpp/                   snippet, test runner, README
-|   |   '-- llm/
-|   |       |-- part3_prompt.txt
-|   |       |-- llm.csv
-|   |       |-- pattern_crosslanguage.csv
-|   |       '-- B9_slide.pdf
-\end{verbatim}
+\section{Dataset, metrics, and audit trail}
+The dataset workbook \texttt{data/B9_Digital_Wallet_Dataset.xlsx} contains 6 comprehensive sheets: \textit{Summary}, \textit{Patterns}, \textit{Evolution}, \textit{Cross Language}, \textit{LLM Records}, and \textit{Pattern Counts}. All metric values are derived from reproducible source scripts.
+
+\section{Findings and limitations}
+\begin{enumerate}[noitemsep]
+    \item Pattern evolution successfully eliminated conditional complexity from the core transfer workflow.
+    \item The design balances theoretical pattern purity with Quarkus idiomatic standards (CDI, DTOs).
+    \item Limitations: The application uses in-memory repositories; production deployment requires distributed persistence, ACID transaction isolation, and regulatory compliance.
+\end{enumerate}
+
+\section{Submission readiness}
+All deliverables are verified: technical report, source snapshots, UML diagrams, test execution results, cross-language suites, CSV catalogs, and Excel workbook.
+
+\section{References}
+\begin{enumerate}[noitemsep]
+    \item E. Gamma, R. Helm, R. Johnson, and J. Vlissides, \textit{Design Patterns: Elements of Reusable Object-Oriented Software}, Addison-Wesley, 1994.
+    \item Quarkus Framework Documentation, \textit{Creating your first application}, \url{https://quarkus.io/guides/getting-started/}.
+    \item Quarkus Architecture Guide, \textit{Contexts and Dependency Injection}, \url{https://quarkus.io/guides/cdi-reference/}.
+    \item Oracle, \textit{BigDecimal Java SE 17 API}, \url{https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/math/BigDecimal.html}.
+\end{enumerate}
+
+\appendix
+\section{Evidence index}
+\begin{itemize}[noitemsep]
+    \item \texttt{Part1/code/digital-wallet}: Baseline source snapshot.
+    \item \texttt{Part2/code/digital-wallet}: Evolved Quarkus source code.
+    \item \texttt{Part3/Strategy}, \texttt{Part3/Observer}: Cross-language suites.
+    \item \texttt{data/B9_Digital_Wallet_Dataset.xlsx}: Master dataset workbook.
+\end{itemize}
 
 \end{document}

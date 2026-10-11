@@ -7,6 +7,14 @@ Upload repository: `https://github.com/aswathymohan-amrita/23CSE455_DP_CaseStudy
 Course: **23CSE455 - Design Patterns**  
 Team: **B9**  
 
+| Roll Number | Student Name | Batch (CSE A / EAC / AIDS / AIE) |
+| --- | --- | --- |
+| AM.SC.U4AIE23008 | K Adithya varma | AIE |
+| AM.SC.U4AIE23051 | P Vishnu chaitanya | AIE |
+| AM.SC.U4AIE23061 | U Shashank | AIE |
+| AM.SC.U4AIE23040 | K Sai Sri Sushanth | AIE |
+
+
 ## Submission Metadata
 
 | Item | Value |

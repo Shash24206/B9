@@ -1,12 +1,22 @@
-# Cross-language comparison
+# Cross-language design-pattern examples
 
-The representative instances are **Currency Settlement Strategy** and **Transaction Completion Notification Observer**. They were selected because both remain significant after all Part 2 changes and exercise different variation mechanisms: a request-time algorithm choice and one-to-many event delivery. Each language implements the same fixture: convert USD 10.00 to EUR using 0.92, pass EUR through unchanged, and notify exactly two subscribers after completion.
+Part 3 provides a self-contained implementation and executable test for every pattern appearing in this case study. Every pattern directory follows one consistent layout: `pattern_name/language/snippet + test runner + README`.
 
-Run from the language directory:
+```text
+Part3/
+  <pattern_name>/                  # one of the 14 names below
+    java/                          # Snippet.java, TestRunner.java, README.md
+    python/                        # snippet.py, test_runner.py, README.md
+    javascript/                    # snippet.js, test_runner.js, README.md
+    cpp/                           # snippet.hpp, test_runner.cpp, README.md
+  representative_comparison/       # original combined Strategy + Observer fixture
+    java/  python/  javascript/  cpp/
+  evidence/                        # retained execution outputs and timing data
+  llm/                             # prompt and response record
+```
 
-* Java: `javac PatternDemos.java && java PatternDemos`
-* Python: `python pattern_demos.py`
-* JavaScript: `node pattern_demos.js`
-* C++: `g++ -std=c++17 pattern_demos.cpp -o pattern_demos && ./pattern_demos`
+Pattern directories: `adapter`, `builder`, `chain_of_responsibility`, `command`, `decorator`, `dependency_injection`, `dto`, `facade`, `observer`, `repository`, `simple_factory`, `state`, `strategy`, and `value_object`.
 
-Java and C++ were not run in the supplied environment because their compilers were unavailable. The JavaScript and Python outputs are retained under `evidence/`.
+Every language directory has a minimal fixture that demonstrates the named pattern and a runner that checks its expected behavior. Run its local command documented in the language README. Python and JavaScript use their standard installed runtimes; Java needs JDK 17+ and C++ needs a C++17 compiler.
+
+`representative_comparison/` is deliberately separate from the one-pattern-per-directory examples. It preserves the original measured Strategy/Observer fixture referenced by `data/cross_language.csv`; it is not part of the new reusable pattern-example layout.

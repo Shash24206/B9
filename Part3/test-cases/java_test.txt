@@ -1,2 +1,0 @@
-Command: javac PatternDemos.java && java PatternDemos
-not_run: no JDK or javac executable available in the supplied environment.

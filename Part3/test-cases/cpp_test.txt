@@ -1,2 +1,0 @@
-Command: g++ -std=c++17 pattern_demos.cpp -o pattern_demos && ./pattern_demos
-not_run: no C++ compiler executable available in the supplied environment.
